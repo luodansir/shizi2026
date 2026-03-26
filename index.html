@@ -3,82 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>宝宝识字大王-终极修复版</title>
+    <title>宝贝识字大王-特效增强版</title>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
-    <script src="https://unpkg.com/pinyin-pro"></script>
+    <script src="https://unpkg.com/pinyin-pro@3.26.0/dist/index.js"></script>
     <style>
         :root { --p: #ff9800; --s: #2196f3; --g: #4caf50; --bg: #fffbe6; }
-        body { margin: 0; background: var(--bg); font-family: 'PingFang SC', sans-serif; display: flex; flex-direction: column; align-items: center; overflow: hidden; touch-action: manipulation; }
-        
-        /* 顶部状态栏 */
-        .status-bar { width: 100%; max-width: 400px; display: flex; justify-content: space-around; align-items: center; background: #fff; padding: 12px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; z-index: 100; }
-        .stat-item { font-weight: bold; font-size: 22px; color: #333; display: flex; align-items: center; gap: 5px; }
-        #star-count { color: #f44336; transition: all 0.3s; display: inline-block; }
-        .bump { transform: scale(1.5); } /* 数字跳动动画 */
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; transition: background 0.5s; overflow-x: hidden; min-height: 100vh; }
 
-        /* 画板区 */
-        #app { width: 100%; max-width: 450px; padding: 10px; text-align: center; }
-        #pinyin { font-size: 48px; color: #795548; font-weight: bold; height: 60px; margin-top: 5px; }
-        #grid-container { width: 300px; height: 300px; background: #fff; margin: 10px auto; border: 8px solid #d32f2f; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); cursor: crosshair; }
-        
-        /* 按钮组 */
-        .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 310px; margin: 15px auto; }
-        button { border: none; padding: 15px; border-radius: 15px; color: white; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.2); -webkit-tap-highlight-color: transparent; }
-        button:active { transform: translateY(2px); box-shadow: none; }
+        /* 状态栏 & 星星动画 */
+        .status-bar { width: 100%; max-width: 400px; display: flex; justify-content: space-around; align-items: center; background: #fff; padding: 12px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; position: sticky; top: 0; z-index: 10; }
+        .stat-btn { cursor: pointer; display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 18px; color: #555; transition: transform 0.2s; user-select: none; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+        .star-pop { animation: starPop 0.3s ease; }
+        @keyframes starPop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+
+        #app { width: 100%; max-width: 450px; padding: 15px; text-align: center; }
+        #pinyin { font-size: 42px; color: #795548; font-weight: bold; height: 60px; margin-top: 10px; letter-spacing: 2px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+        #grid-container { width: 280px; height: 280px; background: #fff; margin: 15px auto; border: 6px solid #d32f2f; border-radius: 15px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+
+        .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 290px; margin: 15px auto; }
+        button { border: none; padding: 14px; border-radius: 12px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.15); transition: all 0.1s; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 0 rgba(0,0,0,0.15); }
+        button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.15); }
         .b-blue { background: var(--s); } .b-orange { background: var(--p); } .b-green { background: var(--g); }
-        
-        select { width: 310px; padding: 12px; border-radius: 12px; border: 2px solid var(--p); font-size: 16px; background: white; }
 
-        /* 撒花粒子 */
-        .particle { position: fixed; pointer-events: none; z-index: 999; width: 8px; height: 8px; border-radius: 50%; }
+        select { width: 290px; padding: 12px; border-radius: 12px; border: 2px solid var(--p); font-size: 16px; margin-top: 10px; background: white; cursor: pointer; }
 
-        /* 勋章墙弹窗 */
-        .modal-bg { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; backdrop-filter: blur(5px); }
-        .medal-wall { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 350px; background: white; border-radius: 25px; padding: 20px; z-index: 1001; text-align: center; }
-        .medal-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 15px; }
-        .medal-item { display: flex; flex-direction: column; align-items: center; font-size: 12px; color: #ccc; }
-        .medal-icon { font-size: 40px; filter: grayscale(1); opacity: 0.3; margin-bottom: 5px; }
-        .unlocked { color: #333 !important; }
-        .unlocked .medal-icon { filter: grayscale(0) !important; opacity: 1 !important; transform: scale(1.1); }
+        /* 撒花特效粒子 */
+        .confetti { position: fixed; width: 10px; height: 10px; border-radius: 50%; z-index: 999; pointer-events: none; }
+
+        /* 弹窗样式 */
+        .modal-bg { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:100; backdrop-filter: blur(4px); }
+        .medal-wall { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 350px; background: white; border-radius: 25px; padding: 20px; z-index: 101; text-align: center; max-height: 80vh; overflow-y: auto; border: 5px solid var(--p); }
+        .medal-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .medal-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #aaa; }
+        .medal-icon { font-size: 36px; margin-bottom: 5px; filter: grayscale(1); opacity: 0.3; transition: all 0.3s; }
+        .unlocked .medal-icon { filter: grayscale(0); opacity: 1; transform: scale(1.1); }
+
+        #congrats { display: none; position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); background: white; border: 5px solid var(--p); border-radius: 25px; padding: 30px; z-index: 110; text-align: center; animation: popIn 0.3s ease; }
+        @keyframes popIn { from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+
+        /* 加载提示 */
+        .loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #999; font-size: 14px; }
+
+        /* 响应式 */
+        @media (max-width: 360px) {
+            #grid-container { width: 240px; height: 240px; }
+            .btns, select { width: 250px; }
+            #pinyin { font-size: 40px; }
+        }
     </style>
 </head>
 <body>
 
 <div class="status-bar">
-    <div class="stat-item" id="star-box">⭐ <span id="star-count">0</span></div>
-    <div class="stat-item" onclick="openWall()" style="cursor:pointer">🏆 勋章墙</div>
+    <div class="stat-btn" id="star-box">⭐ <span id="star-count">0</span></div>
+    <div class="stat-btn" onclick="openWall()">🏆 勋章墙</div>
+    <div id="progress-info" style="font-size: 14px; color: #888;">0 / 0</div>
 </div>
 
 <div id="app">
-    <div id="pinyin"></div>
-    <div id="grid-container"></div>
+    <div id="pinyin">-</div>
+    <div id="grid-container"><div class="loading">加载中...</div></div>
     <div class="btns">
-        <button class="b-blue" onclick="changeWord(-1)">上一个</button>
-        <button class="b-blue" onclick="changeWord(1)">下一个</button>
-        <button class="b-orange" onclick="playDemo()">看笔顺</button>
-        <button class="b-green" onclick="startQuiz()">我会写</button>
+        <button class="b-blue" onclick="changeWord(-1)">⬅️ 上个</button>
+        <button class="b-blue" onclick="changeWord(1)">下个 ➡️</button>
+        <button class="b-orange" onclick="playAnimation()">🎬 看笔顺</button>
+        <button class="b-green" onclick="startQuiz()">✍️ 我会写</button>
     </div>
     <select id="catSelect" onchange="switchCat(this.value)"></select>
-    <div id="progress-info" style="margin-top:10px; font-size:14px; color:#888;"></div>
 </div>
 
 <div class="modal-bg" id="modalBg" onclick="closeModals()"></div>
 <div class="medal-wall" id="medalWall">
-    <h2 style="color:var(--p); margin:0;">我的勋章</h2>
+    <h2 style="color:var(--p); margin-top: 0;">我的成就</h2>
     <div class="medal-grid" id="medalGrid"></div>
-    <button class="b-orange" style="width:100%; margin-top:20px;" onclick="closeModals()">加油学习</button>
+</div>
+
+<div id="congrats">
+    <div id="pop-icon" style="font-size: 70px;"></div>
+    <h2 id="pop-name" style="color: var(--p); margin: 10px 0;"></h2>
+    <p>太棒了！获得新勋章！</p>
+    <button class="b-green" style="width: 100%; margin-top: 15px;" onclick="closeModals()">收下</button>
 </div>
 
 <script>
-// 1. 数据准备
-const rawData = "一乙二十丁厂七卜八人入儿匕几九刁了刀力乃又三干于亏工土士才下寸大丈与万上小口山巾千乞川亿个夕久么勺凡丸及广亡门丫义之尸己已巳弓子卫也女刃飞习叉马乡丰王开井天夫元无云专丐扎艺木五支厅不犬太区历歹友尤匹车巨牙屯戈比互切瓦止少曰日中贝冈内水见午牛手气毛壬升夭长仁什片仆化仇币仍仅斤爪反介父从仑今凶分乏公仓月氏勿欠风丹匀乌勾凤六文亢方火为斗忆计订户认冗讥心尺引丑巴孔队办以允予邓劝双书幻玉刊未末示击打巧正扑卉扒功扔去甘世艾古节本术可丙左厉石右布夯戊龙平灭轧东卡北占凸卢业旧帅归旦目且叶甲申叮电号田由只叭史央兄叽叼叫叩叨另叹冉皿凹囚四生矢失乍禾丘付仗代仙们仪白仔他斥瓜乎丛令用甩印尔乐句匆册卯犯外处冬鸟务包饥主市立冯玄闪兰半汁汇头汉宁穴它讨写让礼训议必讯记永司尼民弗弘出辽奶奴召加皮边孕发圣对台矛纠母幼丝邦式迂刑戎动扛寺吉扣考托老巩圾执扩扫地场扬耳芋共芒亚芝朽朴机权过臣吏再协西压厌戌在百有存而页匠夸夺灰达列死成夹夷轨邪尧划迈毕至此贞师尘尖劣光当早吁吐吓虫曲团吕同吊吃因吸吗吆屿屹岁帆回岂则刚网肉年朱先丢廷舌竹迁乔迄伟传乒乓休伍伏优臼伐延仲件任伤价伦份华仰仿伙伪自伊血向似后行舟全会杀合兆企众爷伞创肌肋朵杂危旬旨旭负匈名各多争色壮冲妆冰庄庆亦刘齐交衣次产决亥充妄闭问闯羊并关米灯州汗污江汛池汝汤忙兴宇守宅字安讲讳军讶许讹论讼农讽设访诀寻那迅尽导异弛孙阵阳收阶阴防奸如妇妃好她妈戏羽观欢买红驮纤驯约级纪驰纫巡寿弄麦玖玛形进戒吞远违韧运扶抚坛技坏抠扰扼拒找批址扯走抄贡汞坝攻赤折抓扳抡扮抢孝坎均抑抛投坟坑抗坊抖护壳志块扭声把报拟却抒劫芙芜苇芽花芹芥芬苍芳严芦芯劳克芭苏杆杠杜材村杖杏杉巫极李杨求甫匣更束吾豆两酉丽医辰励否还尬歼来连轩步卤坚肖旱盯呈时吴助县里呆吱吠呕园旷围呀吨足邮男困吵串员呐听吟吩呛吻吹呜吭吧邑吼囤别吮岖岗帐财针钉牡告我乱利秃秀私每兵估体何佐佑但伸佃作伯伶佣低你住位伴身皂伺佛囱近彻役返余希坐谷妥含邻岔肝肛肚肘肠龟甸免狂犹狈角删条彤卵灸岛刨迎饭饮系言冻状亩况床库庇疗吝应这冷庐序辛弃冶忘闰间闷判兑灶灿灼弟汪沐沛汰沥沙汽沃沦汹泛沧没沟沪沈沉沁怀忧忱快完宋宏牢究穷灾研砖厘厚砌砂泵砚砍面耐耍牵鸥残殃轴轻鸦皆韭背战点虐临览竖省削尝昧盹是盼眨哇哄哑显冒映星昨咧昭畏趴胃贵界虹虾蚁思蚂虽品咽骂勋哗咱响哈哆咬咳咪哪哟炭峡罚贱贴贻骨幽钙钝钞钟钢钠钥钦钧钩钮卸缸拜看矩毡氢怎牲选适秒香种秋科重复竿段便俩贷顺修俏保促俄俐侮俭俗俘信皇泉鬼侵禹侯追俊盾待徊衍律很须叙剑逃食盆胚胧胆胜胞胖脉胎勉狭狮独狰狡狱狠贸怨急饵饶蚀饺饼峦弯将奖哀亭亮度迹庭疮疯疫疤咨姿亲音帝施闺闻闽阀阁差养美姜叛送类迷籽娄前首逆兹总炼炸烁炮炫烂剃洼洁洪洒柒浇浊洞测洗活派洽染洛浏济洋洲浑浓津恃恒恢恍恬恤恰恼恨举觉宣宦室宫宪突穿窃客诫冠诬语扁袄祖神祝祠误诱诲说诵垦退既屋昼屏屎费陡逊眉孩陨除险院娃姥姨姻娇姚娜怒架贺盈勇怠癸蚤柔垒绑绒结绕骄绘给绚骆络绝绞骇统耕耘耗耙艳泰秦珠班素匿蚕顽盏匪捞栽捕埂捂振载赶起盐捎捍捏埋捉捆捐损袁捌都哲逝捡挫换挽挚热恐捣壶捅埃挨耻耿耽聂恭莽莱莲莫莉荷获晋恶莹莺真框梆桂桔栖档桐株桥桦栓桃格桩校核样根索哥速逗栗贾酌配翅辱唇夏砸砰砾础破原套逐烈殊殉顾轿较顿毙致柴桌虑监紧党逞晒眠晓咆唠鸭晃哺晌剔晕蚌畔蚣蚊蚪蚓哨哩圃哭哦恩鸯唤唁哼唧啊啊唉唆罢峭峨峰圆峻贼贿赂赃钱钳钻钾铁铃铅缺氧氨特牺牲造乘敌秤租积秧秩称秘透笔笑笋债借值倚俺倾倒倘俱倡候赁俯倍倦健臭射躬息倔徒徐殷舰舱般航途拿耸爹舀爱豺豹颁颂翁胰脆脂胸胳脏脐胶脑脓逛狸狼卿逢鸵留鸳皱饿馁凌凄恋桨浆衰衷高郭席准座症病疾斋疹疼疲脊效离紊唐瓷资凉站剖竞部旁旅畜阅";
+// ==================== 数据配置 ====================
+const fullList = "一乙二十丁厂七卜八人入儿匕几九刁了刀力乃又三干于亏工土士才下寸大丈与万上小口山巾千乞川亿个夕久么勺凡丸及广亡门丫义之尸己已巳弓子卫也女刃飞习叉马乡丰王开井天夫元无云专丐扎艺木五支厅不犬太区历歹友尤匹车巨牙屯戈比互切瓦止少曰日中贝冈内水见午牛手气毛壬升夭长仁什片仆化仇币仍仅斤爪反介父从仑今凶分乏公仓月氏勿欠风丹匀乌勾凤六文亢方火为斗忆计订户认冗讥心尺引丑巴孔队办以允予邓劝双书幻玉刊未末示击打巧正扑卉扒功扔去甘世艾古节本术可丙左厉石右布夯戊龙平灭轧东卡北占凸卢业旧帅归旦目且叶甲申叮电号田由只叭史央兄叽叼叫叩叨另叹冉皿凹囚四生矢失乍禾丘付仗代仙们仪白仔他斥瓜乎丛令用甩印尔乐句匆册卯犯外处冬鸟务包饥主市立冯玄闪兰半汁汇头汉宁穴它讨写让礼训议必讯记永司尼民弗弘出辽奶奴召加皮边孕发圣对台矛纠母幼丝邦式迂刑戎动扛寺吉扣考托老巩圾执扩扫地场扬耳芋共芒亚芝朽朴机权过臣吏再协西压厌戌在百有存而页匠夸夺灰达列死成夹夷轨邪尧划迈毕至此贞师尘尖劣光当早吁吐吓虫曲团吕同吊吃因吸吗吆屿屹岁帆回岂则刚网肉年朱先丢廷舌竹迁乔迄伟传乒乓休伍伏优臼伐延仲件任伤价伦份华仰仿伙伪自伊血向似后行舟全会杀合兆企众爷伞创肌肋朵杂危旬旨旭负匈名各多争色壮冲妆冰庄庆亦刘齐交衣次产决亥充妄闭问闯羊并关米灯州汗污江汛池汝汤忙兴宇守宅字安讲讳军讶许讹论讼农讽设访诀寻那迅尽导异弛孙阵阳收阶阴防奸如妇妃好她妈戏羽观欢买红驮纤驯约级纪驰纫巡寿弄麦玖玛形进戒吞远违韧运扶抚坛技坏抠扰扼拒找批址扯走抄贡汞坝攻赤折抓扳抡扮抢孝坎均抑抛投坟坑抗坊抖护壳志块扭声把报拟却抒劫芙芜苇芽花芹芥芬苍芳严芦芯劳克芭苏杆杠杜材村杖杏杉巫极李杨求甫匣更束吾豆两酉丽医辰励否还尬歼来连轩步卤坚肖旱盯呈时吴助县里呆吱吠呕园旷围呀吨足邮男困吵串员呐听吟吩呛吻吹呜吭吧邑吼囤别吮岖岗帐财针钉牡告我乱利秃秀私每兵估体何佐佑但伸佃作伯伶佣低你住位伴身皂伺佛囱近彻役返余希坐谷妥含邻岔肝肛肚肘肠龟甸免狂犹狈角删条彤卵灸岛刨迎饭饮系言冻状亩况床库庇疗吝应这冷庐序辛弃冶忘闰间闷判兑灶灿灼弟汪沐沛汰沥沙汽沃沦汹泛沧没沟沪沈沉沁怀忧忱快完宋宏牢究穷灾良证启评补初社祀识诈诉罕诊词译君灵即层屁尿尾迟局改张忌际陆阿陈阻附坠妓妙妖姊妨妒努忍劲矣鸡纬驱纯纱纲纳驳纵纷纸纹纺驴纽奉玩环武青责现玫表规抹卦坷坯拓拢拔坪拣坦担坤押抽拐拖者拍顶拆拎拥抵拘势轴轻载轿较顿毙致柴桌虑监紧党逞晒眠晓咆唠鸭晃哺晌剔晕蚌畔蚣蚊蚪蚓哨哩圃哭哦恩鸯唤唁哼唧啊啊唉唆罢峭峨峰圆峻贼贿赂赃钱钳钻钾铁铃铅缺氧氨特牺牲造乘敌秤租积秧秩称秘透笔笑笋债借值倚俺倾倒倘俱倡候赁俯倍倦健臭射躬息倔徒徐殷舰舱般航途拿耸爹舀爱豺豹颁颂翁胰脆脂胸胳脏脐胶脑脓逛狸狼卿逢鸵留鸳皱饿馁凌凄恋桨浆衰衷高郭席准座症病疾斋疹疼疲脊效离紊唐瓷资凉站剖竞部旁旅畜阅";
 
-const categories = {
-    "常用推荐": "日月水火土天石风雨雪雷电云山川田木林森草花叶泉池河江海湖",
-    "动物身体": "猫狗牛马羊猪鸡鸭鱼鸟虎狮兔龙蛇鼠猴头手足口目耳鼻舌牙心身",
-    "其他汉字": "", // 逻辑自动填充
-    "全集(3500字)": rawData
+const specialCats = {
+    "自然天地": "日月水火土天石风雨雪雷电云山川田木林森草花叶泉池河江海湖露霜霞虹空气",
+    "可爱动物": "猫狗牛马羊猪鸡鸭鱼鸟虎狮兔龙蛇鼠猴大象鲸蚕蜻蜓蝴蝶蜗牛蚂蚁蜂",
+    "我的身体": "头手足口目耳鼻舌牙心身背骨血毛皮手脚肩胸腹",
+    "常用动作": "走跑跳蹦踢抓拿提拉推挤按摸拍打扫洗擦看听讲说读写坐卧站立"
 };
+
+function getOtherChars() {
+    const defined = Object.values(specialCats).join("");
+    return fullList.split('').filter(c => !defined.includes(c)).join('');
+}
+
+const categories = { ...specialCats, "其他汉字": getOtherChars(), "全集": fullList };
 
 const medalRules = [
     { count: 1, icon: "🌱", name: "初露锋芒" },
@@ -88,148 +113,240 @@ const medalRules = [
     { count: 3500, icon: "🏮", name: "全能大满贯" }
 ];
 
-// 2. 状态变量 (换了新的存储KEY，防止旧缓存干扰)
-let stars = parseInt(localStorage.getItem('stars_fixed_v7')) || 0;
-let curMode = localStorage.getItem('mode_fixed_v7') || "常用推荐";
-let curIdx = parseInt(localStorage.getItem('idx_fixed_v7_' + curMode)) || 0;
-let writer;
+// ==================== 状态管理 ====================
+const storage = {
+    get: (k, d = 0) => parseInt(localStorage.getItem(k) || d),
+    set: (k, v) => localStorage.setItem(k, v),
+    getStr: (k, d = "") => localStorage.getItem(k) || d
+};
 
-// 3. 自动填充“其他汉字”
-(function fillOthers() {
-    let known = categories["常用推荐"] + categories["动物身体"];
-    let others = "";
-    for(let char of rawData) { if(!known.includes(char)) others += char; }
-    categories["其他汉字"] = others;
-})();
+let stars = storage.get('stars_v6');
+let curMode = storage.getStr('mode_v6', '自然天地');
+let curIdx = storage.get('idx_v6_' + curMode);
+let writer = null;
+let isQuizMode = false;
 
+// ==================== 初始化 ====================
 function init() {
     const sel = document.getElementById('catSelect');
-    sel.innerHTML = Object.keys(categories).map(k => `<option value="${k}" ${k===curMode?'selected':''}>${k}</option>`).join('');
-    document.getElementById('star-count').innerText = stars;
+    sel.innerHTML = Object.keys(categories).map(k => 
+        `<option value="${k}" ${k === curMode ? 'selected' : ''}>${k} (${categories[k].length}字)</option>`
+    ).join('');
+    
+    updateStarsDisplay();
     loadWord();
 }
 
+function updateStarsDisplay() {
+    const el = document.getElementById('star-count');
+    el.innerText = stars;
+    el.parentElement.classList.add('star-pop');
+    setTimeout(() => el.parentElement.classList.remove('star-pop'), 300);
+}
+
+// ==================== 核心功能 ====================
 function loadWord() {
-    const char = categories[curMode][curIdx];
-    document.getElementById('pinyin').innerText = pinyinPro.pinyin(char);
-    document.getElementById('progress-info').innerText = `${curIdx + 1} / ${categories[curMode].length}`;
-    document.getElementById('grid-container').innerHTML = '';
-    
-    // 创建画板
-    writer = HanziWriter.create('grid-container', char, {
-        width: 300,
-        height: 300,
-        padding: 20,
-        strokeColor: '#333',
-        strokeWidth: 25,       // 展示笔画加粗
-        outlineWidth: 2,
-        highlightColor: '#2196f3',
-        drawingOptions: {
-            strokeWidth: 25,   // 用户手写笔画加粗 (关键修改)
-            strokeColor: '#d32f2f'
-        }
-    });
-    
-    speak(char);
-    localStorage.setItem('idx_fixed_v7_' + curMode, curIdx);
-    localStorage.setItem('mode_fixed_v7', curMode);
-}
-
-function playDemo() {
-    writer.animateCharacter();
-}
-
-// 撒花效果
-function celebrate() {
-    for (let i = 0; i < 50; i++) {
-        const p = document.createElement('div');
-        p.className = 'particle';
-        p.style.left = '50vw';
-        p.style.top = '50vh';
-        p.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
-        document.body.appendChild(p);
-
-        const angle = Math.random() * Math.PI * 2;
-        const velocity = 5 + Math.random() * 10;
-        const vx = Math.cos(angle) * velocity;
-        const vy = Math.sin(angle) * velocity;
-
-        p.animate([
-            { transform: 'translate(0,0) scale(1)', opacity: 1 },
-            { transform: `translate(${vx * 30}px, ${vy * 30}px) scale(0)`, opacity: 0 }
-        ], { duration: 1000, easing: 'ease-out' }).onfinish = () => p.remove();
+    const chars = categories[curMode];
+    if (!chars || chars.length === 0) {
+        console.error('当前分类无汉字');
+        return;
     }
     
-    // 星星跳动
-    const countEl = document.getElementById('star-count');
-    countEl.classList.add('bump');
-    setTimeout(() => countEl.classList.remove('bump'), 400);
+    // 确保索引在有效范围
+    curIdx = Math.max(0, Math.min(curIdx, chars.length - 1));
+    const char = chars[curIdx];
+    
+    // 更新UI
+    document.getElementById('pinyin').innerText = getPinyin(char);
+    document.getElementById('progress-info').innerText = `${curIdx + 1} / ${chars.length}`;
+    document.getElementById('grid-container').innerHTML = '';
+    
+    // 创建书写器
+    try {
+        writer = HanziWriter.create('grid-container', char, {
+            width: 280,
+            height: 280,
+            padding: 20,
+            strokeWidth: 20,
+            strokeColor: '#333',
+            highlightColor: '#ff9800',
+            outlineColor: '#ddd',
+            strokeAnimationSpeed: 1.2,
+            delayBetweenStrokes: 300,
+            showCharacter: false,
+            showOutline: true
+        });
+        
+        // 显示汉字轮廓
+        writer.showOutline();
+        
+    } catch (e) {
+        console.error('HanziWriter 加载失败:', e);
+        document.getElementById('grid-container').innerHTML = `<div style="font-size: 120px; line-height: 280px; color: #333;">${char}</div>`;
+    }
+    
+    speak(char);
+    saveState();
+}
+
+function getPinyin(char) {
+    try {
+        // pinyin-pro 使用方式
+        if (window.pinyinPro && window.pinyinPro.pinyin) {
+            return window.pinyinPro.pinyin(char, { toneType: 'symbol' });
+        }
+        // 备用：简单拼音映射（常见字）
+        return simplePinyin(char);
+    } catch (e) {
+        return simplePinyin(char);
+    }
+}
+
+// 简单拼音映射（备用）
+function simplePinyin(char) {
+    const map = {
+        '一': 'yī', '二': 'èr', '三': 'sān', '四': 'sì', '五': 'wǔ',
+        '六': 'liù', '七': 'qī', '八': 'bā', '九': 'jiǔ', '十': 'shí',
+        '日': 'rì', '月': 'yuè', '水': 'shuǐ', '火': 'huǒ', '土': 'tǔ',
+        '天': 'tiān', '地': 'dì', '人': 'rén', '大': 'dà', '小': 'xiǎo',
+        '上': 'shàng', '下': 'xià', '左': 'zuǒ', '右': 'yòu', '中': 'zhōng',
+        '山': 'shān', '川': 'chuān', '田': 'tián', '木': 'mù', '林': 'lín',
+        '森': 'sēn', '草': 'cǎo', '花': 'huā', '叶': 'yè', '树': 'shù',
+        '猫': 'māo', '狗': 'gǒu', '牛': 'niú', '马': 'mǎ', '羊': 'yáng',
+        '猪': 'zhū', '鸡': 'jī', '鸭': 'yā', '鱼': 'yú', '鸟': 'niǎo',
+        '虎': 'hǔ', '狮': 'shī', '兔': 'tù', '龙': 'lóng', '蛇': 'shé',
+        '头': 'tóu', '手': 'shǒu', '足': 'zú', '口': 'kǒu', '目': 'mù',
+        '耳': 'ěr', '鼻': 'bí', '舌': 'shé', '牙': 'yá', '心': 'xīn',
+        '走': 'zǒu', '跑': 'pǎo', '跳': 'tiào', '站': 'zhàn', '坐': 'zuò',
+        '看': 'kàn', '听': 'tīng', '说': 'shuō', '读': 'dú', '写': 'xiě'
+    };
+    return map[char] || char;
+}
+
+function playAnimation() {
+    if (writer) {
+        writer.animateCharacter({
+            onComplete: () => console.log('动画完成')
+        });
+    }
 }
 
 function startQuiz() {
+    if (!writer) return;
+    isQuizMode = true;
     writer.quiz({
-        onStrokeCorrect: () => speak("对啦"),
-        onSuccess: (data) => {
-            // 核心修复：先增加星星，再存入本地，再更新UI
-            stars = stars + 1;
-            localStorage.setItem('stars_fixed_v7', stars);
-            document.getElementById('star-count').innerText = stars;
-
-            celebrate(); // 撒花特效
-            speak("太棒了！你真聪明！");
-
-            // 检查是否获得勋章
-            const medal = medalRules.find(m => m.count === stars);
-            if(medal) {
-                setTimeout(() => {
-                    alert(`🎊 恭喜解锁新勋章：【${medal.name}】！`);
-                }, 500);
-            }
-            
-            // 2秒后自动下一个
-            setTimeout(() => changeWord(1), 2000);
-        }
+        onComplete: onQuizSuccess,
+        onCorrectStroke: () => console.log('笔画正确'),
+        onMistake: (data) => console.log('错误:', data)
     });
 }
 
+function onQuizSuccess() {
+    isQuizMode = false;
+    stars++;
+    storage.set('stars_v6', stars);
+    updateStarsDisplay();
+    createConfetti();
+    speak('写得真棒！');
+    
+    // 检查勋章
+    const newMedal = medalRules.find(m => m.count === stars);
+    if (newMedal) {
+        setTimeout(() => showCongrats(newMedal), 500);
+    } else {
+        // 2秒后自动下一字
+        setTimeout(() => changeWord(1), 2000);
+    }
+}
+
+// ==================== 导航 ====================
 function changeWord(step) {
-    curIdx = (curIdx + step + categories[curMode].length) % categories[curMode].length;
+    const chars = categories[curMode];
+    curIdx = (curIdx + step + chars.length) % chars.length;
     loadWord();
 }
 
 function switchCat(val) {
     curMode = val;
-    curIdx = parseInt(localStorage.getItem('idx_fixed_v7_' + curMode)) || 0;
+    curIdx = storage.get('idx_v6_' + curMode);
     loadWord();
 }
 
+function saveState() {
+    storage.set('idx_v6_' + curMode, curIdx);
+    storage.set('mode_v6', curMode);
+}
+
+// ==================== 特效 ====================
+function createConfetti() {
+    const colors = ['#ff9800', '#2196f3', '#4caf50', '#e91e63', '#9c27b0', '#ffeb3b'];
+    for (let i = 0; i < 30; i++) {
+        const div = document.createElement('div');
+        div.className = 'confetti';
+        div.style.left = Math.random() * 100 + 'vw';
+        div.style.top = '-10px';
+        div.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        div.style.width = (6 + Math.random() * 8) + 'px';
+        div.style.height = div.style.width;
+        document.body.appendChild(div);
+
+        const duration = 1500 + Math.random() * 1500;
+        div.animate([
+            { transform: `translate3d(0, 0, 0) rotate(0deg)`, opacity: 1 },
+            { transform: `translate3d(${(Math.random() - 0.5) * 300}px, ${window.innerHeight}px, 0) rotate(${Math.random() * 720}deg)`, opacity: 0 }
+        ], { duration, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' })
+        .onfinish = () => div.remove();
+    }
+}
+
+// ==================== 弹窗 ====================
 function openWall() {
     const grid = document.getElementById('medalGrid');
     grid.innerHTML = medalRules.map(m => {
-        const isUnlocked = stars >= m.count;
+        const unlocked = stars >= m.count;
         return `
-            <div class="medal-item ${isUnlocked ? 'unlocked' : ''}">
+            <div class="medal-item ${unlocked ? 'unlocked' : ''}">
                 <div class="medal-icon">${m.icon}</div>
                 <div>${m.name}</div>
-                <div>${m.count}⭐</div>
-            </div>`;
+                <div style="color: ${unlocked ? '#4caf50' : '#ccc'}">${m.count}⭐</div>
+            </div>
+        `;
     }).join('');
     document.getElementById('medalWall').style.display = 'block';
     document.getElementById('modalBg').style.display = 'block';
 }
 
-function closeModals() {
-    document.getElementById('medalWall').style.display = 'none';
-    document.getElementById('modalBg').style.display = 'none';
+function showCongrats(medal) {
+    document.getElementById('pop-icon').innerText = medal.icon;
+    document.getElementById('pop-name').innerText = medal.name;
+    document.getElementById('congrats').style.display = 'block';
+    document.getElementById('modalBg').style.display = 'block';
+    createConfetti();
 }
 
-function speak(t) {
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = 'zh-CN'; u.rate = 0.9;
+function closeModals() {
+    document.querySelectorAll('.medal-wall, #congrats, .modal-bg').forEach(el => el.style.display = 'none');
+}
+
+// ==================== 语音 ====================
+function speak(text) {
+    if (!window.speechSynthesis) return;
+    // 取消之前的语音
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN';
+    u.rate = 0.9;
+    u.pitch = 1.1;
     window.speechSynthesis.speak(u);
 }
 
-init();
+// ==================== 启动 ====================
+document.addEventListener('DOMContentLoaded', init);
+
+// 防止空格键滚动页面
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') e.preventDefault();
+});
 </script>
 </body>
 </html>

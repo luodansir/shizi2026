@@ -1,0 +1,15 @@
+{
+  "short_name": "宝宝识字",
+  "name": "宝宝趣味识字大王3500字",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "theme_color": "#ff9800",
+  "background_color": "#fffbe6",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3843/3843517.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

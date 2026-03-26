@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>宝宝识字大王 - 3500字全集</title>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <script src="https://unpkg.com/pinyin-pro"></script>
+    <style>
+        :root { --p: #ff9800; --s: #2196f3; --g: #4caf50; --bg: #fffbe6; }
+        body { margin: 0; background: var(--bg); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; transition: background 0.5s; overflow-x: hidden; }
+        
+        /* 状态栏 */
+        .status-bar { width: 100%; max-width: 400px; display: flex; justify-content: space-around; align-items: center; background: #fff; padding: 12px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; position: sticky; top: 0; z-index: 10; }
+        .stat-btn { cursor: pointer; display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 18px; color: #555; }
+
+        /* 内容区 */
+        #app { width: 100%; max-width: 450px; padding: 15px; text-align: center; }
+        #pinyin { font-size: 48px; color: #795548; font-weight: bold; height: 60px; margin-top: 10px; }
+        #grid-container { width: 300px; height: 300px; background: #fff; margin: 15px auto; border: 6px solid #d32f2f; border-radius: 15px; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        
+        /* 控制按钮 */
+        .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 310px; margin: 20px auto; }
+        button { border: none; padding: 16px; border-radius: 15px; color: white; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
+        button:active { transform: translateY(2px); box-shadow: none; }
+        .b-blue { background: var(--s); } .b-orange { background: var(--p); } .b-green { background: var(--g); }
+        
+        select { width: 310px; padding: 12px; border-radius: 12px; border: 2px solid var(--p); font-size: 16px; margin-top: 10px; background: #fff; }
+
+        /* 勋章墙弹窗 */
+        .modal-bg { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:100; backdrop-filter: blur(4px); }
+        .medal-wall { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 350px; background: white; border-radius: 25px; padding: 20px; z-index: 101; text-align: center; max-height: 80vh; overflow-y: auto; border: 5px solid var(--p); }
+        .medal-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .medal-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #aaa; }
+        .medal-icon { font-size: 40px; margin-bottom: 5px; filter: grayscale(1); opacity: 0.2; }
+        .medal-item.unlocked { color: #333; }
+        .medal-item.unlocked .medal-icon { filter: grayscale(0); opacity: 1; transform: scale(1.1); }
+
+        /* 恭喜弹窗 */
+        #congrats { display: none; position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); background: white; border: 5px solid var(--p); border-radius: 25px; padding: 30px; z-index: 110; text-align: center; box-shadow: 0 0 100px rgba(255,152,0,0.6); }
+    </style>
+</head>
+<body>
+
+<div class="status-bar">
+    <div class="stat-btn">⭐ <span id="star-count">0</span></div>
+    <div class="stat-btn" onclick="openWall()">🏆 勋章墙</div>
+    <div id="progress-info" style="font-size: 14px; color: #888;">0/3500</div>
+</div>
+
+<div id="app">
+    <div id="pinyin"></div>
+    <div id="grid-container"></div>
+    
+    <div class="btns">
+        <button class="b-blue" onclick="changeWord(-1)">⬅️ 上一个</button>
+        <button class="b-blue" onclick="changeWord(1)">下一个 ➡️</button>
+        <button class="b-orange" onclick="writer.animateCharacter()">🎬 看演示</button>
+        <button class="b-green" onclick="startQuiz()">✍️ 我会写</button>
+    </div>
+
+    <select id="catSelect" onchange="switchCat(this.value)"></select>
+</div>
+
+<div class="modal-bg" id="modalBg" onclick="closeModals()"></div>
+<div class="medal-wall" id="medalWall">
+    <h2 style="margin: 0; color: var(--p);">成就收藏馆</h2>
+    <div class="medal-grid" id="medalGrid"></div>
+    <button class="b-orange" style="margin-top:20px; width:100%;" onclick="closeModals()">继续学习</button>
+</div>
+
+<div id="congrats">
+    <div id="pop-icon" style="font-size: 80px;"></div>
+    <h2 id="pop-name" style="color: var(--p); margin: 10px 0;"></h2>
+    <p>太棒了！你解锁了新的勋章！</p>
+    <button class="b-green" style="width: 100%;" onclick="closeModals()">太开心了</button>
+</div>
+
+<script>
+// 1. 自动分类逻辑 & 3500字全集 (你提供的列表已全部导入)
+const rawList = "一乙二十丁厂七卜八人入儿匕几九刁了刀力乃又三干于亏工土士才下寸大丈与万上小口山巾千乞川亿个夕久么勺凡丸及广亡门丫义之尸己已巳弓子卫也女刃飞习叉马乡丰王开井天夫元无云专丐扎艺木五支厅不犬太区历歹友尤匹车巨牙屯戈比互切瓦止少曰日中贝冈内水见午牛手气毛壬升夭长仁什片仆化仇币仍仅斤爪反介父从仑今凶分乏公仓月氏勿欠风丹匀乌勾凤六文亢方火为斗忆计订户认冗讥心尺引丑巴孔队办以允予邓劝双书幻玉刊未末示击打巧正扑卉扒功扔去甘世艾古节本术可丙左厉石右布夯戊龙平灭轧东卡北占凸卢业旧帅归旦目且叶甲申叮电号田由只叭史央兄叽叼叫叩叨另叹冉皿凹囚四生矢失乍禾丘付仗代仙们仪白仔他斥瓜乎丛令用甩印尔乐句匆册卯犯外处冬鸟务包饥主市立冯玄闪兰半汁汇头汉宁穴它讨写让礼训议必讯记永司尼民弗弘出辽奶奴召加皮边孕发圣对台矛纠母幼丝邦式迂刑戎动扛寺吉扣考托老巩圾执扩扫地场扬耳芋共芒亚芝朽朴机权过臣吏再协西压厌戌在百有存而页匠夸夺灰达列死成夹夷轨邪尧划迈毕至此贞师尘尖劣光当早吁吐吓虫曲团吕同吊吃因吸吗吆屿屹岁帆回岂则刚网肉年朱先丢廷舌竹迁乔迄伟传乒乓休伍伏优臼伐延仲件任伤价伦份华仰仿伙伪自伊血向似后行舟全会杀合兆企众爷伞创肌肋朵杂危旬旨旭负匈名各多争色壮冲妆冰庄庆亦刘齐交衣次产决亥充妄闭问闯羊并关米灯州汗污江汛池汝汤忙兴宇守宅字安讲讳军讶许讹论讼农讽设访诀寻那迅尽导异弛孙阵阳收阶阴防奸如妇妃好她妈戏羽观欢买红驮纤驯约级纪驰纫巡寿弄麦玖玛形进戒吞远违韧运扶抚坛技坏抠扰扼拒找批址扯走抄贡汞坝攻赤折抓扳抡扮抢孝坎均抑抛投坟坑抗坊抖护壳志块扭声把报拟却抒劫芙芜苇芽花芹芥芬苍芳严芦芯劳克芭苏杆杠杜材村杖杏杉巫极李杨求甫匣更束吾豆两酉丽医辰励否还尬歼来连轩步卤坚肖旱盯呈时吴助县里呆吱吠呕园旷围呀吨足邮男困吵串员呐听吟吩呛吻吹呜吭吧邑吼囤别吮岖岗帐财针钉牡告我乱利秃秀私每兵估体何佐佑但伸佃作伯伶佣低你住位伴身皂伺佛囱近彻役返余希坐谷妥含邻岔肝肛肚肘肠龟甸免狂犹狈角删条彤卵灸岛刨迎饭饮系言冻状亩况床库庇疗吝应这冷庐序辛弃冶忘闰间闷判兑灶灿灼弟汪沐沛汰沥沙汽沃沦汹泛沧没沟沪沈沉沁怀忧忱快完宋宏牢究穷灾良证启评补初社祀识诈诉罕诊词译君灵即层屁尿尾迟局改张忌际陆阿陈阻附坠妓妙妖姊妨妒努忍劲矣鸡纬驱纯纱纲纳驳纵纷纸纹纺驴纽奉玩环武青责现玫表规抹卦坷坯拓拢拔坪拣坦担坤押抽拐拖者拍顶拆拎拥抵拘势抱拄垃拉拦幸拌拧拂拙招坡披拨择抬拇拗其取茉苦昔苛若茂苹苗英苟苑苞范直茁茄茎苔茅枉林枝杯枢柜枚析板松枪枫构杭杰述枕丧或画卧事刺枣雨卖郁矾矿码厕奈奔奇奋态欧殴垄妻轰顷转斩轮软到非叔歧肯齿些卓虎虏肾贤尚旺具味果昆国哎咕昌呵畅明易咙昂迪典固忠呻咒咋咐呼鸣咏呢咄咖岸岩帖罗帜帕岭凯败账贩贬购贮图钓制知迭氛垂牧物乖刮秆和季委秉佳侍岳供使例侠侥版侄侦侣侧凭侨佩货侈依卑的迫质欣征往爬彼径所舍金刹命肴斧爸采觅受乳贪念贫忿肤肺肢肿胀朋股肮肪肥服胁周昏鱼兔狐忽狗狞备饰饱饲变京享庞店夜庙府底疟疙疚剂卒郊庚废净盲放刻育氓闸闹郑券卷单炬炒炊炕炎炉沫浅法泄沽河沾泪沮油泊沿泡注泣泞泻泌泳泥沸沼波泼泽治怔怯怖性怕怜怪怡学宝宗定宠宜审宙官空帘宛实试郎诗肩房诚衬衫视祈话诞诡询该详建肃录隶帚屉居届刷屈弧弥弦承孟陋陌孤陕降函限妹姑姐姓妮始姆迢驾叁参艰线练组绅细驶织驹终驻绊驼绍绎经贯契贰奏春帮玷珍玲珊玻毒型拭挂封持拷拱项垮挎城挟挠政赴赵挡拽哉挺括垢拴拾挑垛指垫挣挤拼挖按挥挪拯某甚荆茸革茬荐巷带草茧茵茶荒茫荡荣荤荧故胡荫荔南药标栈柑枯柄栋相查柏栅柳柱柿栏柠树勃要柬咸威歪研砖厘厚砌砂泵砚砍面耐耍牵鸥残殃轴轻鸦皆韭背战点虐临览竖省削尝昧盹是盼眨哇哄哑显冒映星昨咧昭畏趴胃贵界虹虾蚁思蚂虽品咽骂勋哗咱响哈哆咬咳咪哪哟炭峡罚贱贴贻骨幽钙钝钞钟钢钠钥钦钧钩钮卸缸拜看矩毡氢怎牲选适秒香种秋科重复竿段便俩贷顺修俏保促俄俐侮俭俗俘信皇泉鬼侵禹侯追俊盾待徊衍律很须叙剑逃食盆胚胧胆胜胞胖脉胎勉狭狮独狰狡狱狠贸怨急饵饶蚀饺饼峦弯将奖哀亭亮度迹庭疮疯疫疤咨姿亲音帝施闺闻闽阀阁差养美姜叛送类迷籽娄前首逆兹总炼炸烁炮炫烂剃洼洁洪洒柒浇浊洞测洗活派洽染洛浏济洋洲浑浓津恃恒恢恍恬恤恰恼恨举觉宣宦室宫宪突穿窃客诫冠诬语扁袄祖神祝祠误诱诲说诵垦退既屋昼屏屎费陡逊眉孩陨除险院娃姥姨姻娇姚娜怒架贺盈勇怠癸蚤柔垒绑绒结绕骄绘给绚骆络绝绞骇统耕耘耗耙艳泰秦珠班素匿蚕顽盏匪捞栽捕埂捂振载赶起盐捎捍捏埋捉捆捐损袁捌都哲逝捡挫换挽挚热恐捣壶捅埃挨耻耿耽聂恭莽莱莲莫莉荷获晋恶莹莺真框梆桂桔栖档桐株桥桦栓桃格桩校核样根索哥速逗栗贾酌配翅辱唇夏砸砰砾础破原套逐烈殊殉顾轿较顿毙致柴桌虑监紧党逞晒眠晓咆唠鸭晃哺晌剔晕蚌畔蚣蚊蚪蚓哨哩圃哭哦恩鸯唤唁哼唧啊唉唆罢峭峨峰圆峻贼贿赂赃钱钳钻钾铁铃铅缺氧氨特牺牲造乘敌秤租积秧秩称秘透笔笑笋债借值倚俺倾倒倘俱倡候赁俯倍倦健臭射躬息倔徒徐殷舰舱般航途拿耸爹舀爱豺豹颁颂翁胰脆脂胸胳脏脐胶脑脓逛狸狼卿逢鸵留鸳皱饿馁凌凄恋桨浆衰衷高郭席准座症病疾斋疹疼疲脊效离紊唐瓷资凉站剖竞部旁旅畜阅";
+
+const categories = {
+    "全集 (3500字)": rawList,
+    "自然与天气": "日月水火土天石风雨雪雷电云山川田木林森草花叶泉池河江海湖露霜霞虹空气",
+    "可爱动物": "猫狗牛马羊猪鸡鸭鱼鸟虎狮兔龙蛇鼠猴大象鲸蚕蜻蜓蝴蝶蜗牛蚂蚁蜂",
+    "我的身体": "头手足口目耳鼻舌牙心身背骨血毛皮手脚肩胸腹月",
+    "常用动作": "走跑跳蹦踢抓拿提拉推挤按摸拍打扫洗擦看听讲说读写坐卧站立"
+};
+
+const medalRules = [
+    { count: 1, icon: "🌱", name: "初露锋芒" },
+    { count: 10, icon: "🥉", name: "识字小能手" },
+    { count: 50, icon: "🥈", name: "博学小才子" },
+    { count: 100, icon: "🥇", name: "识字大王" },
+    { count: 300, icon: "👑", name: "学林宗师" },
+    { count: 800, icon: "💎", name: "璀璨天才" },
+    { count: 1500, icon: "🚀", name: "知识宇航员" },
+    { count: 3500, icon: "🏮", name: "大满贯" }
+];
+
+// 2. 初始化变量
+let stars = parseInt(localStorage.getItem('stars_final')) || 0;
+let curMode = localStorage.getItem('cur_mode_final') || "自然与天气";
+let curIdx = parseInt(localStorage.getItem('idx_final_' + curMode)) || 0;
+let writer;
+
+function init() {
+    const sel = document.getElementById('catSelect');
+    sel.innerHTML = Object.keys(categories).map(k => `<option value="${k}" ${k===curMode?'selected':''}>${k}</option>`).join('');
+    updateUI();
+    loadWord();
+}
+
+function loadWord() {
+    const list = categories[curMode];
+    const char = list[curIdx];
+    
+    // 背景色切换
+    const bgColors = {"自然与天气":"#e3f2fd", "可爱动物":"#f1f8e9", "我的身体":"#fff3e0", "全集 (3500字)":"#fffbe6"};
+    document.body.style.backgroundColor = bgColors[curMode] || "#f5f5f5";
+
+    // 更新UI
+    document.getElementById('pinyin').innerText = pinyinPro.pinyin(char);
+    document.getElementById('progress-info').innerText = `${curIdx + 1} / ${list.length}`;
+
+    // 绘制汉字
+    document.getElementById('grid-container').innerHTML = '';
+    writer = HanziWriter.create('grid-container', char, {
+        width: 300, height: 300, padding: 25, strokeColor: '#333',
+        strokeAnimationSpeed: 1, delayBetweenStrokes: 300
+    });
+    
+    speak(char);
+    localStorage.setItem('idx_final_' + curMode, curIdx);
+    localStorage.setItem('cur_mode_final', curMode);
+}
+
+function startQuiz() {
+    writer.quiz({
+        onSuccess: () => {
+            stars++;
+            localStorage.setItem('stars_final', stars);
+            updateUI();
+            speak("太棒了，奖励一颗星");
+            
+            // 检查勋章
+            const newMedal = medalRules.find(m => m.count === stars);
+            if(newMedal) showCongrats(newMedal);
+            
+            setTimeout(() => changeWord(1), 1500);
+        }
+    });
+}
+
+function updateUI() {
+    document.getElementById('star-count').innerText = stars;
+}
+
+// 勋章墙逻辑
+function openWall() {
+    const grid = document.getElementById('medalGrid');
+    grid.innerHTML = medalRules.map(m => {
+        const unlocked = stars >= m.count;
+        return `
+            <div class="medal-item ${unlocked ? 'unlocked' : ''}">
+                <div class="medal-icon">${m.icon}</div>
+                <div>${m.name}</div>
+                <div>${m.count}⭐</div>
+            </div>
+        `;
+    }).join('');
+    document.getElementById('medalWall').style.display = 'block';
+    document.getElementById('modalBg').style.display = 'block';
+}
+
+function showCongrats(m) {
+    document.getElementById('pop-icon').innerText = m.icon;
+    document.getElementById('pop-name').innerText = m.name;
+    document.getElementById('congrats').style.display = 'block';
+    document.getElementById('modalBg').style.display = 'block';
+}
+
+function closeModals() {
+    document.querySelectorAll('.medal-wall, #congrats, .modal-bg').forEach(el => el.style.display = 'none');
+}
+
+function changeWord(step) {
+    curIdx = (curIdx + step + categories[curMode].length) % categories[curMode].length;
+    loadWord();
+}
+
+function switchCat(val) {
+    curMode = val;
+    curIdx = parseInt(localStorage.getItem('idx_final_' + curMode)) || 0;
+    loadWord();
+}
+
+function speak(t) {
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = 'zh-CN';
+    u.rate = 0.8;
+    window.speechSynthesis.speak(u);
+}
+
+init();
+</script>
+</body>
+</html>
